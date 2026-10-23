@@ -34,6 +34,15 @@ var opt_buttons: Array = []
 var fb_box: VBoxContainer
 var hint_label: Label
 
+# Web-only: Godot's own TextEdit doesn't receive text from the mobile OS
+# keyboard in Web exports (engine bug, godotengine/godot#108355 — the canvas
+# losing DOM focus to the virtual keyboard's hidden input also clears the
+# engine's internal text focus, so push_text_input becomes a no-op). The
+# workaround is a real HTML <textarea> overlaid on top of a placeholder,
+# so the browser's native keyboard and text handling do the work instead.
+var current_ex_id: String = ""
+var web_overlay_active := false
+
 func _ready() -> void:
 	S = SaveData.load_state()
 	_normalize_state()
@@ -55,7 +64,68 @@ func _ready() -> void:
 	root_box.add_theme_constant_override("separation", 10)
 	root_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_child(root_box)
+	if _is_web():
+		var cb := JavaScriptBridge.create_callback(_on_web_overlay_input)
+		JavaScriptBridge.get_interface("window").__godot_overlay_cb = cb
+		get_viewport().size_changed.connect(_on_viewport_resized)
 	render()
+
+func _is_web() -> bool:
+	return OS.get_name() == "Web"
+
+func _on_viewport_resized() -> void:
+	if web_overlay_active:
+		render()
+
+func _remove_web_overlay() -> void:
+	if web_overlay_active:
+		JavaScriptBridge.eval("if(window.__godot_code_overlay){window.__godot_code_overlay.remove();window.__godot_code_overlay=null;}", true)
+		web_overlay_active = false
+
+func _on_web_overlay_input(args: Array) -> void:
+	if current_ex_id != "" and args.size() > 0:
+		S.drafts[current_ex_id] = String(args[0])
+
+func _show_web_overlay(placeholder: Control, draft: String) -> void:
+	if not is_instance_valid(placeholder):
+		return
+	var rect := placeholder.get_global_rect()
+	var vp_size: Vector2 = get_viewport().get_visible_rect().size
+	var text_json := JSON.stringify(draft)
+	var js := ("""
+(function(){
+  var canvas = document.getElementById('canvas');
+  var cRect = canvas.getBoundingClientRect();
+  var sx = cRect.width / %f;
+  var sy = cRect.height / %f;
+  var old = document.getElementById('godot-code-overlay');
+  if (old) old.remove();
+  var ta = document.createElement('textarea');
+  ta.id = 'godot-code-overlay';
+  ta.value = %s;
+  ta.spellcheck = false;
+  ta.autocapitalize = 'off';
+  ta.style.position = 'fixed';
+  ta.style.left = (cRect.left + %f * sx) + 'px';
+  ta.style.top = (cRect.top + %f * sy) + 'px';
+  ta.style.width = (%f * sx) + 'px';
+  ta.style.height = (%f * sy) + 'px';
+  ta.style.zIndex = '9999';
+  ta.style.background = '#0b0f14';
+  ta.style.color = '#d8e6f5';
+  ta.style.font = '14px monospace';
+  ta.style.border = '1px solid #33475c';
+  ta.style.borderRadius = '8px';
+  ta.style.padding = '8px';
+  ta.style.resize = 'none';
+  ta.style.boxSizing = 'border-box';
+  ta.oninput = function(){ window.__godot_overlay_cb([ta.value]); };
+  document.body.appendChild(ta);
+  window.__godot_code_overlay = ta;
+})();
+""") % [vp_size.x, vp_size.y, text_json, rect.position.x, rect.position.y, rect.size.x, rect.size.y]
+	JavaScriptBridge.eval(js, true)
+	web_overlay_active = true
 
 func _normalize_state() -> void:
 	S.level = int(S.level)
@@ -74,6 +144,7 @@ func save() -> void:
 	SaveData.save_state(S)
 
 func clear_root() -> void:
+	_remove_web_overlay()
 	for c in root_box.get_children():
 		root_box.remove_child(c)
 		c.queue_free()
@@ -525,29 +596,37 @@ func render_exercise(ex: Dictionary) -> void:
 	card.add_child(hint_btn)
 	card.add_child(hint_label)
 
-	var code_edit := TextEdit.new()
-	var draft = S.drafts.get(ex["id"], ex["starter"])
-	code_edit.text = draft
-	code_edit.custom_minimum_size = Vector2(0, 220)
-	code_edit.focus_mode = Control.FOCUS_ALL
-	code_edit.mouse_filter = Control.MOUSE_FILTER_PASS
-	code_edit.add_theme_font_size_override("font_size", 14)
-	code_edit.add_theme_color_override("background_color", Color("0b0f14"))
-	code_edit.add_theme_color_override("font_color", Color("d8e6f5"))
-	card.add_child(code_edit)
-	code_edit.text_changed.connect(func(): S.drafts[ex["id"]] = code_edit.text)
-	code_edit.gui_input.connect(func(event):
-		if event is InputEventMouseButton and event.pressed:
-			code_edit.grab_focus())
-	code_edit.call_deferred("grab_focus")
+	var draft: String = S.drafts.get(ex["id"], ex["starter"])
+	if _is_web():
+		current_ex_id = ex["id"]
+		var placeholder := Control.new()
+		placeholder.custom_minimum_size = Vector2(0, 220)
+		placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_child(placeholder)
+		call_deferred("_show_web_overlay", placeholder, draft)
+	else:
+		var code_edit := TextEdit.new()
+		code_edit.text = draft
+		code_edit.custom_minimum_size = Vector2(0, 220)
+		code_edit.focus_mode = Control.FOCUS_ALL
+		code_edit.mouse_filter = Control.MOUSE_FILTER_PASS
+		code_edit.add_theme_font_size_override("font_size", 14)
+		code_edit.add_theme_color_override("background_color", Color("0b0f14"))
+		code_edit.add_theme_color_override("font_color", Color("d8e6f5"))
+		card.add_child(code_edit)
+		code_edit.text_changed.connect(func(): S.drafts[ex["id"]] = code_edit.text)
+		code_edit.gui_input.connect(func(event):
+			if event is InputEventMouseButton and event.pressed:
+				code_edit.grab_focus())
+		code_edit.call_deferred("grab_focus")
 
 	var results_box := VBoxContainer.new()
 	results_box.add_theme_constant_override("separation", 4)
 
 	var run_btn := make_button("Run", "go")
 	run_btn.pressed.connect(func():
-		S.drafts[ex["id"]] = code_edit.text
-		var r := CodeRunner.run_tests(code_edit.text, ex["name"], ex["tests"])
+		var code: String = S.drafts.get(ex["id"], ex["starter"])
+		var r := CodeRunner.run_tests(code, ex["name"], ex["tests"])
 		_render_results(results_box, r, ex)
 		save())
 	card.add_child(run_btn)
