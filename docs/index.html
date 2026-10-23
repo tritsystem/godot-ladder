@@ -89,6 +89,28 @@ body {
 	text-align: center;
 	z-index: 1;
 }
+
+/* Godot Ladder: a real, always-present HTML textarea for the code
+   exercises. Godot's own TextEdit doesn't receive mobile virtual-keyboard
+   input in Web exports (godotengine/godot#108355), so typing happens here
+   instead; GDScript just shows/hides/reads it via a couple of JS globals. */
+#godot-code-overlay {
+	display: none;
+	position: fixed;
+	left: 4vw;
+	width: 92vw;
+	bottom: 2vh;
+	height: 38vh;
+	z-index: 99999;
+	background: #0b0f14;
+	color: #d8e6f5;
+	font: 14px monospace;
+	border: 2px solid #4cc38a;
+	border-radius: 8px;
+	padding: 8px;
+	resize: none;
+	box-sizing: border-box;
+}
 		</style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
@@ -98,6 +120,8 @@ body {
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
 		</canvas>
+
+		<textarea id="godot-code-overlay" spellcheck="false" autocapitalize="off"></textarea>
 
 		<noscript>
 			Your browser does not support JavaScript.
@@ -109,9 +133,28 @@ body {
 			<div id="status-notice"></div>
 		</div>
 
+		<script>
+(function () {
+	const overlay = document.getElementById('godot-code-overlay');
+	overlay.oninput = function () {
+		if (window.__godot_overlay_cb) {
+			window.__godot_overlay_cb([overlay.value]);
+		}
+	};
+	window.showCodeOverlay = function (text) {
+		overlay.value = text;
+		overlay.style.display = 'block';
+		overlay.focus();
+	};
+	window.hideCodeOverlay = function () {
+		overlay.style.display = 'none';
+	};
+}());
+		</script>
+
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":102604,"index.wasm":39509339},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":true,"fileSizes":{"index.pck":102076,"index.wasm":39509339},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

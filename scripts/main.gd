@@ -80,7 +80,7 @@ func _on_viewport_resized() -> void:
 
 func _remove_web_overlay() -> void:
 	if web_overlay_active:
-		JavaScriptBridge.eval("if(window.__godot_code_overlay){window.__godot_code_overlay.remove();window.__godot_code_overlay=null;}", true)
+		JavaScriptBridge.eval("window.hideCodeOverlay();", true)
 		web_overlay_active = false
 
 func _on_web_overlay_input(args: Array) -> void:
@@ -88,42 +88,12 @@ func _on_web_overlay_input(args: Array) -> void:
 		S.drafts[current_ex_id] = String(args[0])
 
 func _show_web_overlay(draft: String) -> void:
-	# Deliberately NOT positioned against a Godot Control's computed rect:
-	# a freshly-added Container child's global_rect isn't reliably settled
-	# yet when this runs, which was producing a zero-size, invisible box.
-	# Fixed viewport-relative sizing is less "integrated" visually but it
-	# always shows up and is always typable, which is what actually matters.
-	var text_json := JSON.stringify(draft)
-	var js := ("""
-(function(){
-  var old = document.getElementById('godot-code-overlay');
-  if (old) old.remove();
-  var ta = document.createElement('textarea');
-  ta.id = 'godot-code-overlay';
-  ta.value = %s;
-  ta.spellcheck = false;
-  ta.autocapitalize = 'off';
-  ta.style.position = 'fixed';
-  ta.style.left = '4vw';
-  ta.style.width = '92vw';
-  ta.style.bottom = '2vh';
-  ta.style.height = '38vh';
-  ta.style.zIndex = '99999';
-  ta.style.background = '#0b0f14';
-  ta.style.color = '#d8e6f5';
-  ta.style.font = '14px monospace';
-  ta.style.border = '2px solid #4cc38a';
-  ta.style.borderRadius = '8px';
-  ta.style.padding = '8px';
-  ta.style.resize = 'none';
-  ta.style.boxSizing = 'border-box';
-  ta.oninput = function(){ window.__godot_overlay_cb([ta.value]); };
-  document.body.appendChild(ta);
-  ta.focus();
-  window.__godot_code_overlay = ta;
-})();
-""") % [text_json]
-	JavaScriptBridge.eval(js, true)
+	# The #godot-code-overlay textarea is a real, static element baked
+	# into html_shell.html from page load (see export_presets.cfg's
+	# custom_html_shell) -- not created at runtime via eval, which kept
+	# producing an invisible box due to timing issues on the Godot side.
+	# This just shows/fills/focuses an element that already exists.
+	JavaScriptBridge.eval("window.showCodeOverlay(%s);" % JSON.stringify(draft), true)
 	web_overlay_active = true
 
 func _normalize_state() -> void:
