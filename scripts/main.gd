@@ -529,11 +529,17 @@ func render_exercise(ex: Dictionary) -> void:
 	var draft = S.drafts.get(ex["id"], ex["starter"])
 	code_edit.text = draft
 	code_edit.custom_minimum_size = Vector2(0, 220)
+	code_edit.focus_mode = Control.FOCUS_ALL
+	code_edit.mouse_filter = Control.MOUSE_FILTER_PASS
 	code_edit.add_theme_font_size_override("font_size", 14)
 	code_edit.add_theme_color_override("background_color", Color("0b0f14"))
 	code_edit.add_theme_color_override("font_color", Color("d8e6f5"))
 	card.add_child(code_edit)
 	code_edit.text_changed.connect(func(): S.drafts[ex["id"]] = code_edit.text)
+	code_edit.gui_input.connect(func(event):
+		if event is InputEventMouseButton and event.pressed:
+			code_edit.grab_focus())
+	code_edit.call_deferred("grab_focus")
 
 	var results_box := VBoxContainer.new()
 	results_box.add_theme_constant_override("separation", 4)
