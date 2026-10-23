@@ -38,8 +38,9 @@ var hint_label: Label
 # keyboard in Web exports (engine bug, godotengine/godot#108355 — the canvas
 # losing DOM focus to the virtual keyboard's hidden input also clears the
 # engine's internal text focus, so push_text_input becomes a no-op). The
-# workaround is a real HTML <textarea> overlaid on top of a placeholder,
-# so the browser's native keyboard and text handling do the work instead.
+# workaround is a real, fixed-position HTML <textarea> pinned to the
+# viewport, so the browser's native keyboard and text handling do the work
+# instead — same idea as ml-ladder's plain HTML textarea, just injected.
 var current_ex_id: String = ""
 var web_overlay_active := false
 
@@ -86,18 +87,15 @@ func _on_web_overlay_input(args: Array) -> void:
 	if current_ex_id != "" and args.size() > 0:
 		S.drafts[current_ex_id] = String(args[0])
 
-func _show_web_overlay(placeholder: Control, draft: String) -> void:
-	if not is_instance_valid(placeholder):
-		return
-	var rect := placeholder.get_global_rect()
-	var vp_size: Vector2 = get_viewport().get_visible_rect().size
+func _show_web_overlay(draft: String) -> void:
+	# Deliberately NOT positioned against a Godot Control's computed rect:
+	# a freshly-added Container child's global_rect isn't reliably settled
+	# yet when this runs, which was producing a zero-size, invisible box.
+	# Fixed viewport-relative sizing is less "integrated" visually but it
+	# always shows up and is always typable, which is what actually matters.
 	var text_json := JSON.stringify(draft)
 	var js := ("""
 (function(){
-  var canvas = document.getElementById('canvas');
-  var cRect = canvas.getBoundingClientRect();
-  var sx = cRect.width / %f;
-  var sy = cRect.height / %f;
   var old = document.getElementById('godot-code-overlay');
   if (old) old.remove();
   var ta = document.createElement('textarea');
@@ -106,24 +104,25 @@ func _show_web_overlay(placeholder: Control, draft: String) -> void:
   ta.spellcheck = false;
   ta.autocapitalize = 'off';
   ta.style.position = 'fixed';
-  ta.style.left = (cRect.left + %f * sx) + 'px';
-  ta.style.top = (cRect.top + %f * sy) + 'px';
-  ta.style.width = (%f * sx) + 'px';
-  ta.style.height = (%f * sy) + 'px';
-  ta.style.zIndex = '9999';
+  ta.style.left = '4vw';
+  ta.style.width = '92vw';
+  ta.style.bottom = '2vh';
+  ta.style.height = '38vh';
+  ta.style.zIndex = '99999';
   ta.style.background = '#0b0f14';
   ta.style.color = '#d8e6f5';
   ta.style.font = '14px monospace';
-  ta.style.border = '1px solid #33475c';
+  ta.style.border = '2px solid #4cc38a';
   ta.style.borderRadius = '8px';
   ta.style.padding = '8px';
   ta.style.resize = 'none';
   ta.style.boxSizing = 'border-box';
   ta.oninput = function(){ window.__godot_overlay_cb([ta.value]); };
   document.body.appendChild(ta);
+  ta.focus();
   window.__godot_code_overlay = ta;
 })();
-""") % [vp_size.x, vp_size.y, text_json, rect.position.x, rect.position.y, rect.size.x, rect.size.y]
+""") % [text_json]
 	JavaScriptBridge.eval(js, true)
 	web_overlay_active = true
 
@@ -599,11 +598,8 @@ func render_exercise(ex: Dictionary) -> void:
 	var draft: String = S.drafts.get(ex["id"], ex["starter"])
 	if _is_web():
 		current_ex_id = ex["id"]
-		var placeholder := Control.new()
-		placeholder.custom_minimum_size = Vector2(0, 220)
-		placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.add_child(placeholder)
-		call_deferred("_show_web_overlay", placeholder, draft)
+		card.add_child(make_label("Your code box is pinned near the bottom of the screen — scroll down to find it.", 13, SUB_COL))
+		call_deferred("_show_web_overlay", draft)
 	else:
 		var code_edit := TextEdit.new()
 		code_edit.text = draft
