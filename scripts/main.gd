@@ -547,14 +547,19 @@ func render_exercise(ex: Dictionary) -> void:
 	card.add_child(run_btn)
 	card.add_child(results_box)
 
-	var sol_label := make_label("", 13, SUB_COL)
-	sol_label.visible = false
+	var sol_code_label := make_label("", 14, Color("d8e6f5"))
+	sol_code_label.visible = false
+	var sol_why_label := make_label("", 14, TEXT_COL)
+	sol_why_label.visible = false
 	var sol_btn := make_button("Show solution")
 	sol_btn.pressed.connect(func():
-		sol_label.text = ex["sol"]
-		sol_label.visible = true)
+		sol_code_label.text = ex["sol"]
+		sol_why_label.text = "Why this works:\n" + ex["why"]
+		sol_code_label.visible = true
+		sol_why_label.visible = true)
 	card.add_child(sol_btn)
-	card.add_child(sol_label)
+	card.add_child(sol_code_label)
+	card.add_child(sol_why_label)
 
 	var back_btn := make_button("Back to exercise list", "go")
 	back_btn.pressed.connect(func(): S.view = "list"; save(); render())

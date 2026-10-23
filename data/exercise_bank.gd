@@ -3,6 +3,7 @@
 ## real dynamic GDScript compilation (CodeRunner), not a text match.
 ## "a" = args array literal (GDScript source text), "e" = expected value literal
 ## (GDScript source text), or "c" = a check expression using "r" as the result.
+## "why" = a detailed explanation of the solution, shown next to it when revealed.
 class_name ExerciseBank
 extends RefCounted
 
@@ -13,12 +14,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func double(x):\n\t# return x times 2\n\tpass",
 	 "hint":"Use \"return\", then the math: return x * 2",
 	 "sol":"func double(x):\n\treturn x * 2",
+	 "why":"return x * 2 hands back the function's only computation: multiply whatever x is by 2. Because GDScript's * operator works on both int and float, this handles 3 -> 6, 0 -> 0, -4 -> -8, and 2.5 -> 5.0 (the hidden test) without any special-casing — the same one-line formula covers every input type.",
 	 "tests":[{"a":"[3]","e":"6"},{"a":"[0]","e":"0"},{"a":"[-4]","e":"-8"},{"a":"[2.5]","e":"5.0","h":1}]},
 	{"id":"classify_size","l":1,"name":"classify_size","title":"A hand-written rule",
 	 "desc":"Before any script runs logic, it needs a rule. Write classify_size(size) that returns \"big\" when size is 50 or more, otherwise \"small\".",
 	 "starter":"func classify_size(size):\n\t# \"big\" if size >= 50, else \"small\"\n\tpass",
 	 "hint":"if size >= 50: return \"big\" — then return \"small\" after it.",
 	 "sol":"func classify_size(size):\n\tif size >= 50:\n\t\treturn \"big\"\n\treturn \"small\"",
+	 "why":"The if checks size >= 50 first and returns \"big\" immediately when that's true; any value that doesn't satisfy the condition falls through to the line below, which returns \"small\". Because return exits the function immediately, the second return only ever runs when the if was false, so there's no need for an else. This also makes the boundary correct: 50 itself returns \"big\" (>= includes equality), while 49.9 falls through to \"small\".",
 	 "tests":[{"a":"[80]","e":"\"big\""},{"a":"[10]","e":"\"small\""},{"a":"[50]","e":"\"big\""},{"a":"[49.9]","e":"\"small\"","h":1}]},
 
 	# ---------------- Level 2: Scene tree & nodes ----------------
@@ -27,6 +30,7 @@ const EX: Array[Dictionary] = [
 	 "starter":"func nodes_in_group(nodes, group):\n\t# return the names whose groups array contains \"group\"\n\tpass",
 	 "hint":"Loop over nodes; if group is in node[\"groups\"], append node[\"name\"] to a result array.",
 	 "sol":"func nodes_in_group(nodes, group):\n\tvar result = []\n\tfor node in nodes:\n\t\tif node[\"groups\"].has(group):\n\t\t\tresult.append(node[\"name\"])\n\treturn result",
+	 "why":"The function walks nodes one at a time, and for each one asks node[\"groups\"].has(group) — Array.has() returns true if the value appears anywhere in the array, regardless of position. Only when that check passes does it append node[\"name\"] to result, so a node whose groups don't contain the target is simply skipped without breaking the loop. Building result by appending in the same order the loop visits nodes is what keeps the original ordering intact, and an empty input list naturally produces an empty result with no special-casing needed.",
 	 "tests":[
 		{"a":"[[{\"name\":\"Enemy1\",\"groups\":[\"enemies\"]},{\"name\":\"Door1\",\"groups\":[\"interactables\"]},{\"name\":\"Enemy2\",\"groups\":[\"enemies\",\"boss\"]}], \"enemies\"]","e":"[\"Enemy1\",\"Enemy2\"]"},
 		{"a":"[[{\"name\":\"Door1\",\"groups\":[\"interactables\"]}], \"enemies\"]","e":"[]"},
@@ -36,6 +40,7 @@ const EX: Array[Dictionary] = [
 	 "starter":"func child_count_after_free(initial_count, freed):\n\tpass",
 	 "hint":"Compute the subtraction, then clamp it at a minimum of 0 (max(x, 0)).",
 	 "sol":"func child_count_after_free(initial_count, freed):\n\treturn max(initial_count - freed, 0)",
+	 "why":"initial_count - freed is the natural computation, but a node's child count can never actually go negative, so wrapping it in max(..., 0) clamps the result at zero whenever freed is larger than initial_count. max() simply returns whichever of its two arguments is larger, so if the subtraction produces a negative number, 0 wins instead.",
 	 "tests":[{"a":"[5, 2]","e":"3"},{"a":"[3, 5]","e":"0"},{"a":"[0, 0]","e":"0","h":1}]},
 
 	# ---------------- Level 3: GDScript basics ----------------
@@ -44,12 +49,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func clamp_value(x, lo, hi):\n\tpass",
 	 "hint":"if x < lo: return lo. elif x > hi: return hi. else: return x.",
 	 "sol":"func clamp_value(x, lo, hi):\n\tif x < lo:\n\t\treturn lo\n\telif x > hi:\n\t\treturn hi\n\treturn x",
+	 "why":"The three branches cover the whole number line without overlapping: if x is below lo, the first branch returns lo; elif catches anything above hi and returns hi; and if neither fired, x must already be inside the range, so the final return x handles that case. Using elif (rather than two separate if statements) guarantees only one branch ever runs, and the final plain return x — reached only when both earlier conditions were false — is what makes values already inside [lo, hi] pass through completely unchanged.",
 	 "tests":[{"a":"[5, 0, 10]","e":"5"},{"a":"[-3, 0, 10]","e":"0"},{"a":"[15, 0, 10]","e":"10"},{"a":"[7.5, 0, 5]","e":"5","h":1}]},
 	{"id":"greet","l":3,"name":"greet","title":"Strings and functions",
 	 "desc":"Write greet(name) that returns the String \"Hello, \" followed by name followed by \"!\".",
 	 "starter":"func greet(name):\n\tpass",
 	 "hint":"String concatenation uses +: \"Hello, \" + name + \"!\"",
 	 "sol":"func greet(name):\n\treturn \"Hello, \" + name + \"!\"",
+	 "why":"String concatenation with + joins the three pieces — the fixed greeting, whatever name holds, and the exclamation mark — into one new String, left to right. Because + simply inserts name wherever it appears without transforming it, an empty String for name still produces a valid result (\"Hello, !\"), which is exactly what the hidden test checks.",
 	 "tests":[{"a":"[\"Ada\"]","e":"\"Hello, Ada!\""},{"a":"[\"Bo\"]","e":"\"Hello, Bo!\""},{"a":"[\"\"]","e":"\"Hello, !\"","h":1}]},
 
 	# ---------------- Level 4: Signals ----------------
@@ -58,12 +65,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func connect_once(existing, new_conn):\n\tpass",
 	 "hint":"If existing.has(new_conn), return existing as-is. Otherwise append and return it.",
 	 "sol":"func connect_once(existing, new_conn):\n\tif existing.has(new_conn):\n\t\treturn existing\n\texisting.append(new_conn)\n\treturn existing",
+	 "why":"existing.has(new_conn) checks membership first; if new_conn is already in the array, the function returns immediately without touching existing at all, which is exactly what stops a duplicate connection from being added twice. Only when that check is false does execution reach append(), which mutates existing in place before the final return hands it back. This mirrors the real fix for Godot's duplicate-signal-connection bug: always check whether a connection already exists before making it again.",
 	 "tests":[{"a":"[[\"a\",\"b\"], \"c\"]","e":"[\"a\",\"b\",\"c\"]"},{"a":"[[\"a\",\"b\"], \"b\"]","e":"[\"a\",\"b\"]","h":1},{"a":"[[], \"x\"]","e":"[\"x\"]"}]},
 	{"id":"notify_count","l":4,"name":"notify_count","title":"Counting who's listening",
 	 "desc":"Write notify_count(listeners, event) where listeners is an Array of Dictionaries like {\"events\": [\"died\", \"hurt\"]}. Return how many listeners have event in their \"events\" array.",
 	 "starter":"func notify_count(listeners, event):\n\tpass",
 	 "hint":"Loop over listeners, check if event is in listener[\"events\"], and count the matches.",
 	 "sol":"func notify_count(listeners, event):\n\tvar count = 0\n\tfor listener in listeners:\n\t\tif listener[\"events\"].has(event):\n\t\t\tcount += 1\n\treturn count",
+	 "why":"count starts at 0 and the loop visits every listener exactly once; listener[\"events\"].has(event) is true whenever that listener's events array contains the target event, in which case count is incremented. Because the check is independent per listener, one that cares about several events (like one with both \"hurt\" and \"died\") is still counted once for whichever single event is being asked about, and a listener with no match simply contributes nothing to the running total.",
 	 "tests":[
 		{"a":"[[{\"events\":[\"died\"]},{\"events\":[\"hurt\",\"died\"]},{\"events\":[\"hurt\"]}], \"died\"]","e":"2"},
 		{"a":"[[{\"events\":[\"hurt\"]}], \"died\"]","e":"0","h":1}]},
@@ -74,12 +83,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func move_by_delta(position, velocity, delta):\n\tpass",
 	 "hint":"new_position = position + velocity * delta",
 	 "sol":"func move_by_delta(position, velocity, delta):\n\treturn position + velocity * delta",
+	 "why":"This is the definition of constant-velocity motion: distance travelled equals velocity multiplied by time elapsed. position + velocity * delta adds that travelled distance onto the starting position, and because Vector2 arithmetic works component-wise, one expression correctly handles motion in both x and y at once — including a negative velocity component, as in the hidden test moving along -y — exactly the formula a real _physics_process would use every frame.",
 	 "tests":[{"a":"[Vector2(0,0), Vector2(10,0), 0.5]","e":"Vector2(5,0)"},{"a":"[Vector2(1,1), Vector2(0,-4), 0.25]","e":"Vector2(1,0)","h":1}]},
 	{"id":"clamp_speed","l":5,"name":"clamp_speed","title":"Capping a velocity",
 	 "desc":"Write clamp_speed(velocity, max_speed) that returns velocity unchanged if its length is already at or below max_speed, otherwise returns it scaled down to exactly max_speed in the same direction.",
 	 "starter":"func clamp_speed(velocity, max_speed):\n\tpass",
 	 "hint":"Compare velocity.length() to max_speed. If too fast, use velocity.normalized() * max_speed.",
 	 "sol":"func clamp_speed(velocity, max_speed):\n\tif velocity.length() > max_speed:\n\t\treturn velocity.normalized() * max_speed\n\treturn velocity",
+	 "why":"velocity.length() gives the vector's magnitude (its speed, ignoring direction). If that's over max_speed, velocity.normalized() rescales the vector to length 1 while preserving its direction, and multiplying by max_speed stretches it back out to exactly the cap — same direction, capped speed. If the vector is already slow enough, the if is false and velocity is returned completely untouched, which is why the second test (already under the cap) passes with no scaling applied at all.",
 	 "tests":[{"a":"[Vector2(10,0), 5.0]","e":"Vector2(5,0)"},{"a":"[Vector2(1,0), 5.0]","e":"Vector2(1,0)","h":1}]},
 
 	# ---------------- Level 6: 2D physics & collision ----------------
@@ -88,12 +99,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func would_collide(layer_bits, mask_bits):\n\tpass",
 	 "hint":"Use the bitwise AND operator: (layer_bits & mask_bits) != 0",
 	 "sol":"func would_collide(layer_bits, mask_bits):\n\treturn (layer_bits & mask_bits) != 0",
+	 "why":"layer_bits & mask_bits is a bitwise AND: each bit position in the result is 1 only if that same position is 1 in both inputs. If the two masks share no common bit, every position ends up 0 and the whole result is the integer 0; the moment they share even one bit, the result is nonzero. != 0 turns that numeric result into the true/false the function needs — which is exactly how Godot decides internally whether two collision layer/mask bitmasks could ever interact.",
 	 "tests":[{"a":"[1, 1]","e":"true"},{"a":"[2, 1]","e":"false"},{"a":"[5, 1]","e":"true","h":1},{"a":"[8, 2]","e":"false","h":1}]},
 	{"id":"nearest_target","l":6,"name":"nearest_target","title":"Finding the closest target",
 	 "desc":"Write nearest_target(my_pos, targets) where targets is an Array of Vector2. Return whichever target is closest to my_pos (if there's a tie, return the first one that achieves the minimum distance).",
 	 "starter":"func nearest_target(my_pos, targets):\n\tpass",
 	 "hint":"Track the best distance seen so far with my_pos.distance_to(target), updating as you loop.",
 	 "sol":"func nearest_target(my_pos, targets):\n\tvar best = targets[0]\n\tvar best_dist = my_pos.distance_to(best)\n\tfor t in targets:\n\t\tvar d = my_pos.distance_to(t)\n\t\tif d < best_dist:\n\t\t\tbest_dist = d\n\t\t\tbest = t\n\treturn best",
+	 "why":"The function starts by assuming the first target is closest (best), then walks the rest of the array comparing each one's distance to the current best_dist using distance_to(). It only replaces best when it finds something strictly closer (d < best_dist, not <=), which is exactly why ties go to whichever qualifying target appeared earliest — a later target at the exact same distance never satisfies the strict less-than check, so the first one found is kept, matching the hidden tie-break test.",
 	 "tests":[{"a":"[Vector2(0,0), [Vector2(5,0), Vector2(1,0), Vector2(-2,0)]]","e":"Vector2(1,0)"},{"a":"[Vector2(0,0), [Vector2(3,0), Vector2(-3,0)]]","e":"Vector2(3,0)","h":1}]},
 
 	# ---------------- Level 7: UI / Control nodes ----------------
@@ -102,12 +115,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func total_min_width(widths):\n\tpass",
 	 "hint":"Loop and add, or use a running total starting at 0.",
 	 "sol":"func total_min_width(widths):\n\tvar total = 0.0\n\tfor w in widths:\n\t\ttotal += w\n\treturn total",
+	 "why":"total starts at 0.0 and the loop adds every element of widths to it in turn, which is just the definition of a sum. Starting from 0.0 rather than jumping straight to a closed-form formula is what makes the empty-array hidden test work for free — the loop body simply never executes, and the function returns the untouched starting value of 0.0.",
 	 "tests":[{"a":"[[10, 20, 30]]","e":"60.0"},{"a":"[[]]","e":"0.0","h":1},{"a":"[[5.5, 4.5]]","e":"10.0"}]},
 	{"id":"pick_expand_share","l":7,"name":"pick_expand_share","title":"Sharing extra space",
 	 "desc":"When a container has extra space, only children with the \"expand\" flag share it, split evenly. Write pick_expand_share(extra_space, flags) where flags is an Array[bool]. Return an Array of the same length: extra_space / (number of true flags) for each true entry, 0 for each false entry.",
 	 "starter":"func pick_expand_share(extra_space, flags):\n\tpass",
 	 "hint":"First count how many flags are true, then build the result array using that count to divide extra_space.",
 	 "sol":"func pick_expand_share(extra_space, flags):\n\tvar expanders = 0\n\tfor f in flags:\n\t\tif f:\n\t\t\texpanders += 1\n\tvar result = []\n\tfor f in flags:\n\t\tif f and expanders > 0:\n\t\t\tresult.append(extra_space / expanders)\n\t\telse:\n\t\t\tresult.append(0.0)\n\treturn result",
+	 "why":"The function makes two passes over flags: the first just counts how many entries are true (expanders), because that total has to be known before any individual share can be computed. The second pass rebuilds the result in the same order as flags — a true entry gets extra_space / expanders (the even split), a false entry gets 0.0 — so the output always matches flags in both length and position. Guarding with expanders > 0 also means an all-false input (the hidden test) can't trigger a division by zero; it just falls straight through to appending 0.0 for every entry.",
 	 "tests":[{"a":"[100.0, [true, false, true]]","e":"[50.0, 0.0, 50.0]"},{"a":"[90.0, [false, false, false]]","e":"[0.0, 0.0, 0.0]","h":1}]},
 
 	# ---------------- Level 8: Resources & scenes-as-data ----------------
@@ -116,12 +131,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func unique_copy_needed(resource_ids):\n\tpass",
 	 "hint":"Track ids you've already seen in a Dictionary or Array; if you see one again, return true.",
 	 "sol":"func unique_copy_needed(resource_ids):\n\tvar seen = {}\n\tfor id in resource_ids:\n\t\tif seen.has(id):\n\t\t\treturn true\n\t\tseen[id] = true\n\treturn false",
+	 "why":"seen starts as an empty Dictionary used purely to remember \"have I encountered this id before?\" For each id, seen.has(id) checks that memory; if it's already there, a duplicate has just been found, so the function returns true immediately without scanning any further. If it's new, seen[id] = true records it for next time. Only if the whole loop finishes without ever finding a repeat does execution fall through to return false — which also happens automatically on an empty list, since the loop body never runs at all.",
 	 "tests":[{"a":"[[1, 2, 3]]","e":"false"},{"a":"[[1, 2, 2]]","e":"true","h":1},{"a":"[[]]","e":"false"}]},
 	{"id":"resolve_ref","l":8,"name":"resolve_ref","title":"Resolving a stable reference",
 	 "desc":"Write resolve_ref(cache, uid) where cache is a Dictionary mapping uid strings to res:// paths. Return cache[uid] if it exists, otherwise return \"missing\".",
 	 "starter":"func resolve_ref(cache, uid):\n\tpass",
 	 "hint":"Use cache.get(uid, \"missing\"), or check cache.has(uid) first.",
 	 "sol":"func resolve_ref(cache, uid):\n\treturn cache.get(uid, \"missing\")",
+	 "why":"Dictionary.get(key, default) looks up uid in cache and returns whatever value is stored there if the key exists, or falls back to the second argument, \"missing\", if it doesn't — all in a single call, with no separate has() check needed first. That one method call covers both the found case and the not-found case the hidden test exercises.",
 	 "tests":[{"a":"[{\"uid://abc\":\"res://a.tres\"}, \"uid://abc\"]","e":"\"res://a.tres\""},{"a":"[{}, \"uid://xyz\"]","e":"\"missing\"","h":1}]},
 
 	# ---------------- Level 9: Animation ----------------
@@ -130,12 +147,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func lerp_value(a, b, t):\n\tpass",
 	 "hint":"a + (b - a) * t",
 	 "sol":"func lerp_value(a, b, t):\n\treturn a + (b - a) * t",
+	 "why":"Linear interpolation means moving a fraction t of the way from a to b. b - a is the total distance between them; multiplying by t scales that distance down to just the fraction you want to travel; adding the result back onto a lands you at the correct point. At t = 0 the whole (b - a) * t term vanishes, correctly returning a unchanged, and when a and b are equal (the hidden test, at t = 0.9), b - a is 0, so the result is just a (or b) no matter what t is.",
 	 "tests":[{"a":"[0.0, 10.0, 0.5]","e":"5.0"},{"a":"[5.0, 5.0, 0.9]","e":"5.0","h":1},{"a":"[0.0, 10.0, 0.0]","e":"0.0"}]},
 	{"id":"total_duration","l":9,"name":"total_duration","title":"How long an animation really runs",
 	 "desc":"An AnimationPlayer's clip length is set by its longest track. Write total_duration(track_lengths) that returns the largest value in the Array, or 0 for an empty array.",
 	 "starter":"func total_duration(track_lengths):\n\tpass",
 	 "hint":"Check for the empty-array case first, then track the maximum as you loop.",
 	 "sol":"func total_duration(track_lengths):\n\tif track_lengths.is_empty():\n\t\treturn 0.0\n\tvar best = track_lengths[0]\n\tfor t in track_lengths:\n\t\tif t > best:\n\t\t\tbest = t\n\treturn best",
+	 "why":"The empty-array case is handled explicitly first: is_empty() being true means there's no sensible maximum, so the function returns 0.0 immediately rather than trying to read track_lengths[0] on an empty array, which would fail outright. Once that's ruled out, it's the standard running-maximum pattern — start from the first element, and replace best whenever a later element beats it — ending with the single largest value once the loop finishes.",
 	 "tests":[{"a":"[[1.0, 2.5, 0.5]]","e":"2.5"},{"a":"[[]]","e":"0.0","h":1}]},
 
 	# ---------------- Level 10: Autoloads & global state ----------------
@@ -144,12 +163,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func apply_score_delta(score, delta):\n\tpass",
 	 "hint":"max(score + delta, 0)",
 	 "sol":"func apply_score_delta(score, delta):\n\treturn max(score + delta, 0)",
+	 "why":"score + delta is the natural update, but wrapping it in max(..., 0) stops the result from ever dropping below zero, which is exactly the rule a global score should follow: losing more points than you have simply bottoms out at 0 instead of going negative. The hidden test (score 2, delta -10, which would be -8 unclamped) checks precisely that floor.",
 	 "tests":[{"a":"[10, -3]","e":"7"},{"a":"[2, -10]","e":"0","h":1},{"a":"[0, 5]","e":"5"}]},
 	{"id":"merge_save_state","l":10,"name":"merge_save_state","title":"Loading a save file safely",
 	 "desc":"Write merge_save_state(defaults, saved) where both are Dictionaries. Return a Dictionary with every key from defaults, but overridden by saved's value wherever saved has that same key.",
 	 "starter":"func merge_save_state(defaults, saved):\n\tpass",
 	 "hint":"Start from a copy of defaults, then loop over saved's keys and overwrite them in the copy.",
 	 "sol":"func merge_save_state(defaults, saved):\n\tvar result = defaults.duplicate()\n\tfor key in saved:\n\t\tresult[key] = saved[key]\n\treturn result",
+	 "why":"defaults.duplicate() makes a fresh copy of the defaults Dictionary so the caller's original isn't mutated — mutating a shared dictionary in place is its own classic bug, which this sidesteps entirely. The loop then walks every key actually present in saved and writes it into that copy, overwriting whatever default value lived there. Any key defaults has that saved never mentions is left completely untouched, which is why {\"a\":1} merged with an empty {} (the hidden test) comes back unchanged.",
 	 "tests":[{"a":"[{\"hp\":100,\"mp\":50}, {\"hp\":80}]","e":"{\"hp\":80,\"mp\":50}"},{"a":"[{\"a\":1}, {}]","e":"{\"a\":1}","h":1}]},
 
 	# ---------------- Level 11: State machines & architecture ----------------
@@ -158,12 +179,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func next_state(state, event):\n\tpass",
 	 "hint":"A match on state, with a nested match (or if-chain) on event inside each branch, falling through to \"return state\" otherwise.",
 	 "sol":"func next_state(state, event):\n\tif state == \"IDLE\" and event == \"move\":\n\t\treturn \"RUNNING\"\n\tif state == \"RUNNING\" and event == \"stop\":\n\t\treturn \"IDLE\"\n\tif state == \"RUNNING\" and event == \"jump\":\n\t\treturn \"JUMPING\"\n\tif state == \"JUMPING\" and event == \"land\":\n\t\treturn \"IDLE\"\n\treturn state",
+	 "why":"Each if checks one exact (state, event) combination from the transition table and returns the matching next state the moment it matches — only one of the four conditions can ever be true for a given call, since they each test a different state/event pair. If none of the four defined combinations match — as in the \"IDLE\"+\"jump\" hidden test, which this machine simply doesn't define a transition for — execution falls through every if and reaches the final return state, leaving the state unchanged exactly as an undefined transition should.",
 	 "tests":[{"a":"[\"IDLE\", \"move\"]","e":"\"RUNNING\""},{"a":"[\"RUNNING\", \"jump\"]","e":"\"JUMPING\""},{"a":"[\"JUMPING\", \"land\"]","e":"\"IDLE\"","h":1},{"a":"[\"IDLE\", \"jump\"]","e":"\"IDLE\"","h":1}]},
 	{"id":"is_valid_transition","l":11,"name":"is_valid_transition","title":"Checking a transition table",
 	 "desc":"Write is_valid_transition(from, to, table) where table is a Dictionary mapping a state String to an Array of allowed next-state Strings. Return true if to is in table[from], else false.",
 	 "starter":"func is_valid_transition(from, to, table):\n\tpass",
 	 "hint":"table.get(from, []) gives you the allowed list even if \"from\" is missing; then check .has(to).",
 	 "sol":"func is_valid_transition(from, to, table):\n\treturn table.get(from, []).has(to)",
+	 "why":"table.get(from, []) looks up the list of states reachable from from, defaulting to an empty list if from isn't even a key in the table — which avoids a crash on an unrecognized starting state rather than requiring a separate existence check. Calling .has(to) on whatever list comes back then checks whether to is actually one of the allowed destinations, giving a single-expression answer that's true only when the exact transition exists in the table.",
 	 "tests":[{"a":"[\"IDLE\", \"RUNNING\", {\"IDLE\":[\"RUNNING\"], \"RUNNING\":[\"IDLE\",\"JUMPING\"]}]","e":"true"},{"a":"[\"IDLE\", \"JUMPING\", {\"IDLE\":[\"RUNNING\"], \"RUNNING\":[\"IDLE\",\"JUMPING\"]}]","e":"false","h":1}]},
 
 	# ---------------- Level 12: 3D basics ----------------
@@ -172,12 +195,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func closest_light(pos, lights):\n\tpass",
 	 "hint":"Same idea as finding the nearest 2D target, but with Vector3.distance_to().",
 	 "sol":"func closest_light(pos, lights):\n\tvar best = lights[0]\n\tvar best_dist = pos.distance_to(best)\n\tfor l in lights:\n\t\tvar d = pos.distance_to(l)\n\t\tif d < best_dist:\n\t\t\tbest_dist = d\n\t\t\tbest = l\n\treturn best",
+	 "why":"This is the same nearest-neighbor pattern as the 2D exercise, just measured with Vector3.distance_to() instead of Vector2's: start by assuming the first light is closest, then replace best only when a strictly closer one turns up while scanning the rest. The strict < (not <=) is what makes ties resolve to whichever light was found first, which is exactly what the hidden test checks with two lights equally far from the origin.",
 	 "tests":[{"a":"[Vector3(0,0,0), [Vector3(5,0,0), Vector3(1,0,0), Vector3(-2,0,0)]]","e":"Vector3(1,0,0)"},{"a":"[Vector3(0,0,0), [Vector3(3,0,0), Vector3(-3,0,0)]]","e":"Vector3(3,0,0)","h":1}]},
 	{"id":"basis_scale_volume","l":12,"name":"basis_scale_volume","title":"Scale and volume",
 	 "desc":"A Transform3D's scale affects how much space an object occupies. Write basis_scale_volume(scale) that returns scale.x * scale.y * scale.z.",
 	 "starter":"func basis_scale_volume(scale):\n\tpass",
 	 "hint":"Multiply the three components together.",
 	 "sol":"func basis_scale_volume(scale):\n\treturn scale.x * scale.y * scale.z",
+	 "why":"A box's volume is its three dimensions multiplied together, and a Vector3 scale's x, y, and z components are exactly those three dimensions. scale.x * scale.y * scale.z performs that multiplication directly: a uniform scale of 2 in every axis gives 2*2*2 = 8, while a non-uniform scale like (0.5, 2, 1) (the hidden-adjacent test) still correctly multiplies out to 1.0, the same effective volume as no scaling at all — the formula doesn't care whether the three values are equal.",
 	 "tests":[{"a":"[Vector3(2,2,2)]","e":"8.0"},{"a":"[Vector3(1,1,1)]","e":"1.0","h":1},{"a":"[Vector3(0.5,2,1)]","e":"1.0"}]},
 
 	# ---------------- Level 13: Shaders & visual effects ----------------
@@ -186,12 +211,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func mix_channel(a, b, t):\n\tpass",
 	 "hint":"a * (1.0 - t) + b * t",
 	 "sol":"func mix_channel(a, b, t):\n\treturn a * (1.0 - t) + b * t",
+	 "why":"a * (1.0 - t) + b * t is a weighted average: as t grows from 0 to 1, the weight on a shrinks from 1 to 0 while the weight on b grows from 0 to 1, so the result slides smoothly from a to b. At t = 0 the b * t term vanishes entirely and (1.0 - t) is 1, leaving exactly a unchanged — which is what the hidden test (a=0.2, b=0.8, t=0.0) checks.",
 	 "tests":[{"a":"[0.0, 1.0, 0.5]","e":"0.5"},{"a":"[0.2, 0.8, 0.0]","e":"0.2","h":1}]},
 	{"id":"clamp01","l":13,"name":"clamp01","title":"Keeping a uniform in range",
 	 "desc":"Shader uniforms that represent a fraction are usually kept between 0 and 1. Write clamp01(x) that returns x clamped to the range [0.0, 1.0].",
 	 "starter":"func clamp01(x):\n\tpass",
 	 "hint":"You can use the built-in clamp(x, 0.0, 1.0) here.",
 	 "sol":"func clamp01(x):\n\treturn clamp(x, 0.0, 1.0)",
+	 "why":"clamp(x, 0.0, 1.0) is the built-in version of exactly what clamp_value implemented by hand back in level 3 — it returns 0.0 if x is below that, 1.0 if x is above that, and x itself otherwise. Since a shader uniform representing a fraction should never leave the [0, 1] range, reaching for the built-in here, rather than rewriting the if-chain, is the idiomatic choice once you already understand what clamping means underneath.",
 	 "tests":[{"a":"[1.5]","e":"1.0"},{"a":"[-0.5]","e":"0.0","h":1},{"a":"[0.3]","e":"0.3"}]},
 
 	# ---------------- Level 14: Performance & optimization ----------------
@@ -200,12 +227,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func should_process(distance_to_camera, cull_distance):\n\tpass",
 	 "hint":"A single comparison: distance_to_camera <= cull_distance",
 	 "sol":"func should_process(distance_to_camera, cull_distance):\n\treturn distance_to_camera <= cull_distance",
+	 "why":"distance_to_camera <= cull_distance is a single comparison that's true exactly when something is close enough to be worth processing. The <= deliberately includes the boundary case where the distance exactly equals the cull distance, treating it as still visible rather than already culled.",
 	 "tests":[{"a":"[50.0, 100.0]","e":"true"},{"a":"[150.0, 100.0]","e":"false","h":1}]},
 	{"id":"pool_acquire","l":14,"name":"pool_acquire","title":"Finding a free pooled object",
 	 "desc":"Write pool_acquire(pool) where pool is an Array of Dictionaries like {\"in_use\": false}. Return the index of the first entry where \"in_use\" is false, or -1 if none is free.",
 	 "starter":"func pool_acquire(pool):\n\tpass",
 	 "hint":"Loop with an index; return it as soon as you find one that is not in_use.",
 	 "sol":"func pool_acquire(pool):\n\tfor i in range(pool.size()):\n\t\tif not pool[i][\"in_use\"]:\n\t\t\treturn i\n\treturn -1",
+	 "why":"The loop walks the pool by index (rather than by value) specifically because the function needs to hand back the position of the free entry, not the entry itself. The moment it finds one where in_use is false, it returns that index immediately, skipping the rest of the pool entirely. If the loop runs to completion without ever finding a free slot — including the hidden case of a completely empty pool, where the loop body never executes at all — execution falls through to return -1, the agreed signal for \"no free slot, instance a new one.\"",
 	 "tests":[{"a":"[[{\"in_use\":true},{\"in_use\":false}]]","e":"1"},{"a":"[[{\"in_use\":true},{\"in_use\":true}]]","e":"-1","h":1},{"a":"[[]]","e":"-1","h":1}]},
 
 	# ---------------- Level 15: Multiplayer & networking ----------------
@@ -214,12 +243,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func pick_authority(peer_ids):\n\tpass",
 	 "hint":"You can use the built-in min() across the array, or track the minimum in a loop.",
 	 "sol":"func pick_authority(peer_ids):\n\tvar best = peer_ids[0]\n\tfor p in peer_ids:\n\t\tif p < best:\n\t\t\tbest = p\n\treturn best",
+	 "why":"This is a running-minimum: best starts as the first peer id, and every later id that's smaller than the current best replaces it. By the time the loop finishes, best holds the smallest id in the whole array — which, under this simplified convention, is exactly the peer treated as the authority. A single-element array (the hidden test) never enters the if at all and correctly returns that one id unchanged.",
 	 "tests":[{"a":"[[3, 1, 5]]","e":"1"},{"a":"[[7]]","e":"7","h":1}]},
 	{"id":"should_apply_input","l":15,"name":"should_apply_input","title":"Guarding authoritative movement",
 	 "desc":"Write should_apply_input(my_id, authority_id) that returns true only if my_id equals authority_id.",
 	 "starter":"func should_apply_input(my_id, authority_id):\n\tpass",
 	 "hint":"A single equality check.",
 	 "sol":"func should_apply_input(my_id, authority_id):\n\treturn my_id == authority_id",
+	 "why":"my_id == authority_id is true only when this peer's id exactly matches the authority's id, which is the whole point of an authority check: it stops every peer from applying its own local movement to a node they don't actually control, letting only the one authoritative peer's input take effect.",
 	 "tests":[{"a":"[1, 1]","e":"true"},{"a":"[2, 1]","e":"false","h":1}]},
 
 	# ---------------- Level 16: Export & platform quirks ----------------
@@ -228,12 +259,14 @@ const EX: Array[Dictionary] = [
 	 "starter":"func fits_size_budget(build_mb, budget_mb):\n\tpass",
 	 "hint":"A single comparison.",
 	 "sol":"func fits_size_budget(build_mb, budget_mb):\n\treturn build_mb <= budget_mb",
+	 "why":"build_mb <= budget_mb is true when the build is within budget, including exactly at the limit — the <= deliberately treats a build that exactly matches the budget as acceptable rather than rejecting it, matching how a size budget is normally read as a ceiling, not a strict upper bound.",
 	 "tests":[{"a":"[45.0, 50.0]","e":"true"},{"a":"[60.0, 50.0]","e":"false","h":1}]},
 	{"id":"templates_match","l":16,"name":"templates_match","title":"Matching editor and template versions",
 	 "desc":"Write templates_match(editor_version, template_version) that returns true only if the two version Strings are exactly equal.",
 	 "starter":"func templates_match(editor_version, template_version):\n\tpass",
 	 "hint":"A single equality check on the two strings.",
 	 "sol":"func templates_match(editor_version, template_version):\n\treturn editor_version == template_version",
+	 "why":"editor_version == template_version is a direct String comparison: it's true only when the two version strings are character-for-character identical. \"4.7\" matching \"4.7\" passes, but \"4.7\" against \"4.6.2\" (the hidden test) fails even though they're close — which is the real-world point: export templates have to match the editor's version exactly, not approximately, or the export can silently misbehave.",
 	 "tests":[{"a":"[\"4.7\", \"4.7\"]","e":"true"},{"a":"[\"4.7\", \"4.6.2\"]","e":"false","h":1}]},
 
 	# ---------------- Level 17: Real-world engineering lessons ----------------
@@ -242,11 +275,13 @@ const EX: Array[Dictionary] = [
 	 "starter":"func safe_get(nodes, path):\n\tpass",
 	 "hint":"nodes.get(path, \"null-reference-risk\")",
 	 "sol":"func safe_get(nodes, path):\n\treturn nodes.get(path, \"null-reference-risk\")",
+	 "why":"nodes.get(path, \"null-reference-risk\") looks up path in the dictionary and returns its value if present, or the fallback string if it's missing — in one call, with no separate existence check needed first. Returning a clearly-labeled sentinel value instead of Godot's usual null is what turns a silent, hard-to-trace null reference into something immediately visible wherever the result ends up being used, which is the real lesson behind the exercise.",
 	 "tests":[{"a":"[{\"Enemy\":\"ok\"}, \"Enemy\"]","e":"\"ok\""},{"a":"[{\"Enemy\":\"ok\"}, \"Boss\"]","e":"\"null-reference-risk\"","h":1}]},
 	{"id":"dedupe_connections","l":17,"name":"dedupe_connections","title":"Cleaning up duplicate connections",
 	 "desc":"Write dedupe_connections(connections) that returns the Array with duplicate Strings removed, keeping only each one's first occurrence, in order.",
 	 "starter":"func dedupe_connections(connections):\n\tpass",
 	 "hint":"Walk the array, keep a Dictionary (or Array) of what you've already added, and only append new values.",
 	 "sol":"func dedupe_connections(connections):\n\tvar seen = {}\n\tvar result = []\n\tfor c in connections:\n\t\tif not seen.has(c):\n\t\t\tseen[c] = true\n\t\t\tresult.append(c)\n\treturn result",
+	 "why":"seen is a Dictionary used purely as a fast membership check — its values don't matter, only whether a key exists in it. The loop walks connections in order, and only appends a value to result (and records it in seen) the first time it's encountered; every later repeat of the same value is caught by seen.has(c) and skipped. Because appends only ever happen in the order the loop visits connections, the first occurrence of each value is what survives, in its original relative order — exactly matching the duplicate-signal-connection cleanup this exercise is modeling.",
 	 "tests":[{"a":"[[\"a\",\"b\",\"a\",\"c\",\"b\"]]","e":"[\"a\",\"b\",\"c\"]"},{"a":"[[]]","e":"[]","h":1}]},
 ]
